@@ -132,6 +132,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return false
 			}
 
+			if wrapperFlag.Contains(sel.Sel.Name) {
+				return true
+			}
+
 			if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.Contains(id.Name) {
 				detected = append(detected, ret)
 				return false
