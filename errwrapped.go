@@ -1,4 +1,4 @@
-package errdler
+package errwrapped
 
 import (
 	"errors"
