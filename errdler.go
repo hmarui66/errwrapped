@@ -136,7 +136,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		for _, n := range detected {
 			//ast.Print(pass.Fset, n)
-			pass.Reportf(n.Pos(), "unhandled error found")
+			pass.Reportf(n.Pos(), "unwrapped error found")
 		}
 
 		return false

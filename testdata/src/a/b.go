@@ -21,5 +21,5 @@ func run() error {
 		return errors.New(fmt.Sprintf("error: %v", err))
 	}
 
-	return f.bar() // want "unhandled error found"
+	return f.bar() // want "unwrapped error found"
 }

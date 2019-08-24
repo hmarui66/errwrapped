@@ -12,7 +12,7 @@ func main() {
 }
 
 func sample() error {
-	return err() // want "unhandled error found"
+	return err() // want "unwrapped error found"
 }
 
 func err() error {
