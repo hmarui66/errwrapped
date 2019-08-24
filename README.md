@@ -5,7 +5,7 @@ errwrapped checks for code returning errors that are not wrapped by any wrapper 
 ## Install
 
 ```
-go get -u github.com/hmarui66/errwrapped
+go get -u github.com/hmarui66/errwrapped/cmd/errwrapped
 ```
 
 ## Use
