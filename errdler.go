@@ -1,19 +1,53 @@
 package errdler
 
 import (
+	"errors"
+	"fmt"
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+type options []string
+
+func (o *options) String() string {
+	return fmt.Sprint(*o)
+}
+
+func (o *options) Set(value string) error {
+	if len(*o) > 0 {
+		return errors.New("option flag already set")
+	}
+	for _, opt := range strings.Split(value, ",") {
+		*o = append(*o, opt)
+	}
+	return nil
+}
+
+func (o *options) Contains(value string) bool {
+	if o == nil {
+		return false
+	}
+	for _, opt := range *o {
+		if strings.Contains(value, opt) {
+			return true
+		}
+	}
+
+	return false
+}
+
 var (
-	wrapper string
+	wrapperFlag options
+	ignoreFlag  options
 )
 
 func init() {
-	Analyzer.Flags.StringVar(&wrapper, "wrapper", `errors`, "name of error wrapper")
+	Analyzer.Flags.Var(&wrapperFlag, "wrapper", "comma-separated list of error wrapper name")
+	Analyzer.Flags.Var(&ignoreFlag, "ignore", "comma-separated list of ignoring file name suffix")
 }
 
 var Analyzer = &analysis.Analyzer{
@@ -28,24 +62,35 @@ var Analyzer = &analysis.Analyzer{
 const Doc = "errdler is ..."
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	if len(wrapperFlag) == 0 {
+		if err := wrapperFlag.Set("errors"); err != nil {
+			return nil, err
+		}
+	}
+
+	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	nodeFilter := []ast.Node{
 		(*ast.FuncDecl)(nil),
 	}
 
-	inspect.Preorder(nodeFilter, func(n ast.Node) {
+	insp.Nodes(nodeFilter, func(n ast.Node, push bool) bool {
+		filename := pass.Fset.File(n.Pos()).Name()
+		if ignoreFlag.Contains(filename) {
+			return false
+		}
+
 		fd, ok := n.(*ast.FuncDecl)
 		if !ok {
-			return
+			return false
 		}
 		errIdx, exists := getErrorIdx(fd)
 		if !exists {
-			return
+			return false
 		}
 
 		if fd.Body == nil || len(fd.Body.List) == 0 {
-			return
+			return false
 		}
 
 		var detected []*ast.ReturnStmt
@@ -81,7 +126,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return false
 			}
 
-			if id, ok := sel.X.(*ast.Ident); !ok || id.Name != wrapper {
+			if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.Contains(id.Name) {
 				detected = append(detected, ret)
 				return false
 			}
@@ -93,6 +138,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			//ast.Print(pass.Fset, n)
 			pass.Reportf(n.Pos(), "unhandled error found")
 		}
+
+		return false
 	})
 
 	return nil, nil
