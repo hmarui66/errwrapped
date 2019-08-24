@@ -126,14 +126,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return false
 			}
 
+			if id, ok := cal.Fun.(*ast.Ident); ok && wrapperFlag.Contains(id.Name) {
+				return true
+			}
+
 			sel, ok := cal.Fun.(*ast.SelectorExpr)
 			if !ok {
 				detected = append(detected, ret)
 				return false
-			}
-
-			if wrapperFlag.Contains(sel.Sel.Name) {
-				return true
 			}
 
 			if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.Contains(id.Name) {

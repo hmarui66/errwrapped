@@ -18,7 +18,7 @@ errwrapped ./...
 
 ### Wrapper library
 
-Use the `-wrapper` flag to specify a wrapper library.
+Use the `-wrapper` flag to specify a wrapper library or function.
 
 ```
 errwrapped -wrapper xerrors ./...
