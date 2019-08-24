@@ -27,12 +27,25 @@ func (o *options) Set(value string) error {
 	return nil
 }
 
-func (o *options) Contains(value string) bool {
+func (o *options) PartialMatch(value string) bool {
 	if o == nil {
 		return false
 	}
 	for _, opt := range *o {
 		if strings.Contains(value, opt) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (o *options) ExactMatch(value string) bool {
+	if o == nil {
+		return false
+	}
+	for _, opt := range *o {
+		if value == opt {
 			return true
 		}
 	}
@@ -78,7 +91,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 	insp.Nodes(nodeFilter, func(n ast.Node, push bool) bool {
 		filename := pass.Fset.File(n.Pos()).Name()
-		if ignoreFlag.Contains(filename) {
+		if ignoreFlag.PartialMatch(filename) {
 			return false
 		}
 
@@ -126,7 +139,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return false
 			}
 
-			if id, ok := cal.Fun.(*ast.Ident); ok && wrapperFlag.Contains(id.Name) {
+			if id, ok := cal.Fun.(*ast.Ident); ok && wrapperFlag.ExactMatch(id.Name) {
 				return true
 			}
 
@@ -136,7 +149,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				return false
 			}
 
-			if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.Contains(id.Name) {
+			if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.ExactMatch(id.Name) {
 				detected = append(detected, ret)
 				return false
 			}
