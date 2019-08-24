@@ -41,13 +41,15 @@ func (o *options) Contains(value string) bool {
 }
 
 var (
-	wrapperFlag options
-	ignoreFlag  options
+	wrapperFlag   options
+	ignoreFlag    options
+	ignoreOneline bool
 )
 
 func init() {
 	Analyzer.Flags.Var(&wrapperFlag, "wrapper", "comma-separated list of error wrapper name")
 	Analyzer.Flags.Var(&ignoreFlag, "ignore", "comma-separated list of ignoring file name suffix")
+	Analyzer.Flags.BoolVar(&ignoreOneline, "ignore-oneline", false, "ignore one line function")
 }
 
 var Analyzer = &analysis.Analyzer{
@@ -90,6 +92,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		if fd.Body == nil || len(fd.Body.List) == 0 {
+			return false
+		}
+
+		if ignoreOneline && len(fd.Body.List) == 1 {
 			return false
 		}
 
