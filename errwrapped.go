@@ -129,17 +129,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			}
 
 			errRes := ret.Results[errIdx]
-
 			if id, ok := errRes.(*ast.Ident); ok && id.Name == "nil" {
 				return false
 			}
 
-			cal, ok := errRes.(*ast.CallExpr)
-			if ok {
-				if !validateCallExpr(cal) {
-					detected = append(detected, ret)
-				} else {
-				}
+			if validateExpr(errRes) {
 				return true
 			}
 
@@ -155,6 +149,38 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
+}
+
+func validateExpr(expr ast.Expr) bool {
+	switch typ := expr.(type) {
+	case *ast.CallExpr:
+		return validateCallExpr(typ)
+	case *ast.UnaryExpr:
+		return validateExpr(typ.X)
+	case *ast.CompositeLit:
+		return validateCompositeLit(typ)
+	default:
+		return false
+	}
+}
+
+func validateCompositeLit(cmpLit *ast.CompositeLit) bool {
+	if len(cmpLit.Elts) == 0 {
+		return false
+	}
+
+	for _, elt := range cmpLit.Elts {
+		if cal, ok := elt.(*ast.CallExpr); ok {
+			return validateCallExpr(cal)
+		}
+		if kv, ok := elt.(*ast.KeyValueExpr); ok {
+			if validateExpr(kv.Value) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func validateCallExpr(cal *ast.CallExpr) bool {
