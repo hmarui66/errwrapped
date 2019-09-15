@@ -66,7 +66,7 @@ func init() {
 }
 
 var Analyzer = &analysis.Analyzer{
-	Name: "errdler",
+	Name: "errwrapped",
 	Doc:  Doc,
 	Run:  run,
 	Requires: []*analysis.Analyzer{
@@ -74,7 +74,7 @@ var Analyzer = &analysis.Analyzer{
 	},
 }
 
-const Doc = "errdler is ..."
+const Doc = "errwrapped is ..."
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	if len(wrapperFlag) == 0 {
@@ -115,6 +115,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		var detected []*ast.ReturnStmt
 		ast.Inspect(fd.Body, func(n ast.Node) bool {
 			if _, ok := n.(*ast.FuncLit); ok {
+				// ignore function literal
 				return false
 			}
 			ret, ok := n.(*ast.ReturnStmt)
@@ -134,31 +135,19 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			}
 
 			cal, ok := errRes.(*ast.CallExpr)
-			if !ok {
-				detected = append(detected, ret)
-				return false
-			}
-
-			if id, ok := cal.Fun.(*ast.Ident); ok && wrapperFlag.ExactMatch(id.Name) {
+			if ok {
+				if !validateCallExpr(cal) {
+					detected = append(detected, ret)
+				} else {
+				}
 				return true
 			}
 
-			sel, ok := cal.Fun.(*ast.SelectorExpr)
-			if !ok {
-				detected = append(detected, ret)
-				return false
-			}
-
-			if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.ExactMatch(id.Name) {
-				detected = append(detected, ret)
-				return false
-			}
-
+			detected = append(detected, ret)
 			return true
 		})
 
 		for _, n := range detected {
-			//ast.Print(pass.Fset, n)
 			pass.Reportf(n.Pos(), "unwrapped error found")
 		}
 
@@ -166,6 +155,23 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	})
 
 	return nil, nil
+}
+
+func validateCallExpr(cal *ast.CallExpr) bool {
+	if id, ok := cal.Fun.(*ast.Ident); ok && wrapperFlag.ExactMatch(id.Name) {
+		return true
+	}
+
+	sel, ok := cal.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+
+	if id, ok := sel.X.(*ast.Ident); !ok || !wrapperFlag.ExactMatch(id.Name) {
+		return false
+	}
+
+	return true
 }
 
 func getErrorIdx(fd *ast.FuncDecl) (int, bool) {
